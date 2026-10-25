@@ -1,0 +1,7 @@
+.env
+state.json
+prices.xlsx
+.wb_profile/
+.wb_session.json
+__pycache__/
+.venv/

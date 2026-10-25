@@ -1,0 +1,4 @@
+curl_cffi
+playwright
+openpyxl
+python-dotenv
