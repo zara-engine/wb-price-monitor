@@ -14,13 +14,16 @@ import os
 import re
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from dotenv import load_dotenv
 
 from notifier import TelegramNotifier, build_message
-from sheets import GoogleSheet
 from storage import append_history, find_changes, load_state, save_state
 from wb_client import WBClient
+
+if TYPE_CHECKING:
+    from sheets import GoogleSheet
 
 log = logging.getLogger("monitor")
 
@@ -56,9 +59,12 @@ def check(client: WBClient, notifier: TelegramNotifier,
     append_history(Path(args.report), products)
     save_state(state_path, products)
     if sheet:
+        from sheets import SheetsError
         try:
             sheet.append(products)
             log.info("История дописана в Google Таблицу")
+        except SheetsError as ex:
+            log.error("Google Таблица: %s", ex)
         except Exception:  # noqa: BLE001
             log.exception("Не удалось записать в Google Таблицу")
 
@@ -93,8 +99,12 @@ def main() -> None:
     notifier = TelegramNotifier(os.getenv("TG_BOT_TOKEN"), os.getenv("TG_CHAT_ID"))
     sheet = None
     if os.getenv("GOOGLE_SHEET"):
-        sheet = GoogleSheet(os.getenv("GOOGLE_SHEET"),
-                            os.getenv("GOOGLE_CREDENTIALS", "service_account.json"))
+        from sheets import GoogleSheet, SheetsError  # gspread нужен только для Google Таблиц
+        try:
+            sheet = GoogleSheet(os.getenv("GOOGLE_SHEET"),
+                                os.getenv("GOOGLE_CREDENTIALS", "service_account.json"))
+        except SheetsError as ex:
+            log.error("Google Таблица отключена: %s", ex)
 
     while True:
         try:

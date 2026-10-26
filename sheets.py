@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import re
+from pathlib import Path
 
 import gspread
 
@@ -15,10 +17,20 @@ log = logging.getLogger(__name__)
 WORKSHEET = "История цен"
 
 
+class SheetsError(Exception):
+    """Ошибка настройки: неверная ссылка, нет доступа и т. п."""
+
+
 def _sheet_key(value: str) -> str:
     """Принимает id таблицы или ссылку на неё."""
-    m = re.search(r"/spreadsheets/d/([\w-]+)", value)
-    return m.group(1) if m else value.strip()
+    value = value.strip()
+    m = re.search(r"/spreadsheets/(?:u/\d+/)?d/([\w-]+)", value)
+    key = m.group(1) if m else value
+    if key == "e" or not re.fullmatch(r"[\w-]{20,}", key):
+        raise SheetsError(
+            f"GOOGLE_SHEET не похож на ссылку на таблицу: {value!r}. Вставьте "
+            "ссылку из адресной строки, вида https://docs.google.com/spreadsheets/d/<id>/edit")
+    return key
 
 
 class GoogleSheet:
@@ -29,8 +41,19 @@ class GoogleSheet:
 
     def _worksheet(self) -> gspread.Worksheet:
         if self._ws is None:
-            gc = gspread.service_account(filename=self.credentials)
-            sh = gc.open_by_key(self.key)
+            try:
+                gc = gspread.service_account(filename=self.credentials)
+            except FileNotFoundError as ex:
+                raise SheetsError(f"Не найден JSON-ключ сервисного аккаунта: "
+                                  f"{self.credentials}") from ex
+            try:
+                sh = gc.open_by_key(self.key)
+            except (gspread.SpreadsheetNotFound, PermissionError) as ex:
+                email = json.loads(Path(self.credentials).read_text("utf-8")).get(
+                    "client_email", "сервисного аккаунта")
+                raise SheetsError(
+                    "Таблица не найдена или нет доступа. Проверьте ссылку и выдайте "
+                    f"права редактора для {email}") from ex
             try:
                 ws = sh.worksheet(WORKSHEET)
             except gspread.WorksheetNotFound:

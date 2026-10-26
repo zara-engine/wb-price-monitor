@@ -97,7 +97,8 @@ python monitor.py --once --show-browser   # показать окно брауз
 5. Создайте Google Таблицу и нажмите **Настройки доступа**: добавьте email
    сервисного аккаунта (поле `client_email` в JSON, вида
    `…@….iam.gserviceaccount.com`) с правами **Редактор**.
-6. Впишите ссылку на таблицу в `.env`:
+6. Скопируйте ссылку на таблицу из адресной строки браузера и впишите в `.env`
+   (вместо `<id>` в ней будет длинный набор букв и цифр):
 
    ```
    GOOGLE_SHEET=https://docs.google.com/spreadsheets/d/<id>/edit
