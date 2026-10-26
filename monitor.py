@@ -18,6 +18,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from notifier import TelegramNotifier, build_message
+from sheets import GoogleSheet
 from storage import append_history, find_changes, load_state, save_state
 from wb_client import WBClient
 
@@ -39,7 +40,8 @@ def read_articles(path: Path) -> list[int]:
     return list(dict.fromkeys(nms))  # убираем дубли, сохраняя порядок
 
 
-def check(client: WBClient, notifier: TelegramNotifier, args) -> None:
+def check(client: WBClient, notifier: TelegramNotifier,
+          sheet: GoogleSheet | None, args) -> None:
     nms = read_articles(Path(args.articles))
     if not nms:
         log.error("Список артикулов пуст")
@@ -53,6 +55,12 @@ def check(client: WBClient, notifier: TelegramNotifier, args) -> None:
     changes = find_changes(products, load_state(state_path), args.threshold)
     append_history(Path(args.report), products)
     save_state(state_path, products)
+    if sheet:
+        try:
+            sheet.append(products)
+            log.info("История дописана в Google Таблицу")
+        except Exception:  # noqa: BLE001
+            log.exception("Не удалось записать в Google Таблицу")
 
     if changes:
         notifier.send(build_message(changes))
@@ -83,10 +91,14 @@ def main() -> None:
     client = WBClient(dest=os.getenv("WB_DEST", "-1257786"),
                       headless=not args.show_browser)
     notifier = TelegramNotifier(os.getenv("TG_BOT_TOKEN"), os.getenv("TG_CHAT_ID"))
+    sheet = None
+    if os.getenv("GOOGLE_SHEET"):
+        sheet = GoogleSheet(os.getenv("GOOGLE_SHEET"),
+                            os.getenv("GOOGLE_CREDENTIALS", "service_account.json"))
 
     while True:
         try:
-            check(client, notifier, args)
+            check(client, notifier, sheet, args)
         except Exception:  # noqa: BLE001
             log.exception("Ошибка проверки")
         if args.once:

@@ -62,6 +62,19 @@ def find_changes(products: list[Product], state: dict,
     return changes
 
 
+def history_rows(products: list[Product]) -> list[list]:
+    """Строки истории по колонкам HEADERS (общие для Excel и Google Таблиц)."""
+    now = datetime.now().strftime("%d.%m.%Y %H:%M")
+    rows = []
+    for p in products:
+        price = p.price if p.in_stock else "нет в наличии"
+        rows.append([now, p.nm, p.name, p.brand, p.supplier, price,
+                     p.basic_price if p.in_stock else None,
+                     p.discount if p.in_stock else None,
+                     p.quantity, p.rating, p.feedbacks, p.url])
+    return rows
+
+
 def append_history(path: Path, products: list[Product]) -> None:
     """Дописывает строки в Excel-историю (создаёт файл при первом запуске)."""
     if path.exists():
@@ -80,12 +93,7 @@ def append_history(path: Path, products: list[Product]) -> None:
             ws.column_dimensions[get_column_letter(i)].width = w
         ws.freeze_panes = "A2"
 
-    now = datetime.now().strftime("%d.%m.%Y %H:%M")
-    for p in products:
-        price = p.price if p.in_stock else "нет в наличии"
-        ws.append([now, p.nm, p.name, p.brand, p.supplier, price,
-                   p.basic_price if p.in_stock else None,
-                   p.discount if p.in_stock else None,
-                   p.quantity, p.rating, p.feedbacks, p.url])
-        ws.cell(ws.max_row, 12).hyperlink = p.url
+    for row in history_rows(products):
+        ws.append(row)
+        ws.cell(ws.max_row, 12).hyperlink = row[-1]
     wb.save(path)

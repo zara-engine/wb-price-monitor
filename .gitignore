@@ -5,3 +5,4 @@ prices.xlsx
 .wb_session.json
 __pycache__/
 .venv/
+service_account.json
