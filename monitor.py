@@ -14,13 +14,16 @@ import os
 import re
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from dotenv import load_dotenv
 
 from notifier import TelegramNotifier, build_message
-from sheets import GoogleSheet
 from storage import append_history, find_changes, load_state, save_state
 from wb_client import WBClient
+
+if TYPE_CHECKING:
+    from sheets import GoogleSheet
 
 log = logging.getLogger("monitor")
 
@@ -93,6 +96,7 @@ def main() -> None:
     notifier = TelegramNotifier(os.getenv("TG_BOT_TOKEN"), os.getenv("TG_CHAT_ID"))
     sheet = None
     if os.getenv("GOOGLE_SHEET"):
+        from sheets import GoogleSheet  # gspread нужен только для Google Таблиц
         sheet = GoogleSheet(os.getenv("GOOGLE_SHEET"),
                             os.getenv("GOOGLE_CREDENTIALS", "service_account.json"))
 
